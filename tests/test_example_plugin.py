@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dbwarden.plugin import HookRegistry
-from dbwarden_plugin_example import setup
+from dbwarden_example import setup
 
 
 def setup_function() -> None:
@@ -11,7 +11,7 @@ def setup_function() -> None:
 def test_setup_registers_hooks() -> None:
     class Registrar:
         def register(self, hook_name, fn) -> None:
-            HookRegistry.register(hook_name, fn, plugin="dbwarden-plugin-example")
+            HookRegistry.register(hook_name, fn, plugin="dbwarden-example")
 
     setup(Registrar())
 
@@ -19,6 +19,6 @@ def test_setup_registers_hooks() -> None:
 
 
 def test_import_has_no_side_effects() -> None:
-    import dbwarden_plugin_example  # noqa: F401
+    import dbwarden_example  # noqa: F401
 
     assert HookRegistry.hooks() == {}

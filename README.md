@@ -7,10 +7,10 @@ A GitHub template repository for building [DBWarden](https://github.com/dbwarden
 Click **Use this template** on GitHub to create your own repository, then rename the placeholders:
 
 ```bash
-python bootstrap.py dbwarden-plugin-yourname
+python bootstrap.py dbwarden-yourname
 ```
 
-`bootstrap.py` applies the standard naming rule, renames the package and test, and removes itself. To rename by hand instead, replace `dbwarden-plugin-example` / `dbwarden_plugin_example` / `plugin_example` and rename `src/dbwarden_plugin_example/` and `tests/test_example_plugin.py`.
+`bootstrap.py` applies the standard naming rule, renames the package and test, and removes itself. To rename by hand instead, replace `dbwarden-example` / `dbwarden_example` / `example` and rename `src/dbwarden_example/` and `tests/test_example_plugin.py`.
 
 Then verify:
 
@@ -29,7 +29,7 @@ import pkg  = "dbwarden_" + slug
 entry key   = slug
 ```
 
-For example `dbwarden-plugin-audit` gives package `dbwarden_plugin_audit` and key `plugin_audit`; `dbwarden-pgsql-rbac` gives package `dbwarden_pgsql_rbac` and key `pgsql_rbac`.
+For example `dbwarden-audit` gives package `dbwarden_audit` and key `audit`; `dbwarden-pgsql-rbac` gives package `dbwarden_pgsql_rbac` and key `pgsql_rbac`.
 
 Structure:
 

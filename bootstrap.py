@@ -2,7 +2,7 @@
 """Rename this template to a real DBWarden plugin.
 
 Usage:
-    python bootstrap.py dbwarden-plugin-<name>
+    python bootstrap.py dbwarden-<name>
 
 Applies the standard naming rule:
     slug        = <dist>.removeprefix("dbwarden-").replace("-", "_")
@@ -17,9 +17,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).parent
-OLD_DIST = "dbwarden-plugin-example"
-OLD_PKG = "dbwarden_plugin_example"
-OLD_KEY = "plugin_example"
+OLD_DIST = "dbwarden-example"
+OLD_PKG = "dbwarden_example"
+OLD_KEY = "example"
 
 
 def main() -> int:
