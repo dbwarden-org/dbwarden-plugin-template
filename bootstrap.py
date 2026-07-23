@@ -31,21 +31,23 @@ def main() -> int:
     slug = dist.removeprefix("dbwarden-").replace("-", "_")
     pkg = f"dbwarden_{slug}"
 
-    # Rewrite file contents.
-    for path in [ROOT / "pyproject.toml", ROOT / "README.md", *(ROOT / "tests").glob("*.py")]:
+    # pyproject.toml: rewrite the entry point (key + target) atomically, then names.
+    pyproject = ROOT / "pyproject.toml"
+    text = pyproject.read_text(encoding="utf-8")
+    text = text.replace(f'{OLD_KEY} = "{OLD_PKG}:setup"', f'{slug} = "{pkg}:setup"')
+    text = text.replace(OLD_DIST, dist).replace(OLD_PKG, pkg)
+    pyproject.write_text(text, encoding="utf-8")
+
+    # Other files: distribution and package names only (leave prose like "example" alone).
+    for path in [ROOT / "README.md", *(ROOT / "tests").glob("*.py")]:
         text = path.read_text(encoding="utf-8")
-        text = text.replace(OLD_DIST, dist).replace(OLD_PKG, pkg).replace(OLD_KEY, slug)
+        text = text.replace(OLD_DIST, dist).replace(OLD_PKG, pkg)
         path.write_text(text, encoding="utf-8")
 
     # Rename the package directory.
     src = ROOT / "src" / OLD_PKG
     if src.exists():
         src.rename(ROOT / "src" / pkg)
-
-    # Rename the test file.
-    old_test = ROOT / "tests" / "test_example_plugin.py"
-    if old_test.exists():
-        old_test.rename(ROOT / "tests" / f"test_{slug}_plugin.py")
 
     print(f"Renamed to {dist} (package {pkg}, entry key {slug}).")
     Path(__file__).unlink()

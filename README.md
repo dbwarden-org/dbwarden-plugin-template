@@ -1,6 +1,6 @@
 # dbwarden-plugin-template
 
-A GitHub template repository for building [DBWarden](https://github.com/dbwarden/dbwarden) plugins. It ships the standardized plugin layout: a setuptools `src/` package with `setup(registrar)` in `__init__.py`, a `dbwarden.plugins` entry point, a passing test, and a CI workflow.
+A GitHub template repository for building [DBWarden](https://github.com/dbwarden/dbwarden) plugins. It ships the standardized plugin layout: a setuptools `src/` package with `setup(registrar)` in `__init__.py`, a `dbwarden.plugins` entry point, the Verified conformance suite, and a CI workflow.
 
 ## Use It
 
@@ -10,7 +10,7 @@ Click **Use this template** on GitHub to create your own repository, then rename
 python bootstrap.py dbwarden-yourname
 ```
 
-`bootstrap.py` applies the standard naming rule, renames the package and test, and removes itself. To rename by hand instead, replace `dbwarden-example` / `dbwarden_example` / `example` and rename `src/dbwarden_example/` and `tests/test_example_plugin.py`.
+`bootstrap.py` applies the standard naming rule, renames the package, and removes itself. To rename by hand instead, replace `dbwarden-example` / `dbwarden_example` / `example` and rename `src/dbwarden_example/`.
 
 Then verify:
 
@@ -18,6 +18,10 @@ Then verify:
 pip install -e . pytest
 pytest -q
 ```
+
+## Verified Badge
+
+`tests/test_conformance.py` runs DBWarden's shared conformance harness (`dbwarden.plugin_conformance`), which proves the plugin respects the contract: a declared entry point, no import-time side effects, a working `setup()`, compliant hook signatures, no core-internal imports, and idempotent setup. Object plugins add handler and ordering checks. Keep this suite green in public CI to qualify for the **Verified** (Approved tier) badge. See the [Approved Plugin Standard](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/developing/approved-standard.md).
 
 ## The Standard
 
@@ -43,7 +47,7 @@ Structure:
 ├── src/<package>/
 │   └── __init__.py           # hook functions + setup(registrar)
 └── tests/
-    └── test_<name>_plugin.py
+    └── test_conformance.py    # Verified conformance suite
 ```
 
 ## What This Example Does
