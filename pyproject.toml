@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dbwarden-plugin-example"
+version = "0.1.0"
+description = "A DBWarden plugin."
+readme = "README.md"
+requires-python = ">=3.12.7"
+dependencies = ["dbwarden>=0.15.0"]
+authors = [{ name = "Your Name", email = "you@example.com" }]
+
+[project.entry-points."dbwarden.plugins"]
+plugin_example = "dbwarden_plugin_example:setup"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
