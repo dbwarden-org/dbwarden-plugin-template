@@ -1,0 +1,55 @@
+name: Publish to PyPI
+
+# Publishing runs through PyPI Trusted Publishing: no API token is stored
+# anywhere. PyPI records an attestation naming this repository and this
+# workflow file, which is what `dbwarden plugin add` can verify before install.
+#
+# Before your first release:
+#   1. Create the project on PyPI (or reserve the name).
+#   2. Add a Trusted Publisher for it: owner/repo, workflow `publish.yml`,
+#      environment `pypi`.
+#   3. Create a `pypi` environment in this repository's settings.
+#
+# Renaming this file breaks the attestation match. Keep it `publish.yml`.
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Build package
+        run: uv build
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/dbwarden-example
+    permissions:
+      id-token: write
+    steps:
+      - name: Download distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

@@ -8,9 +8,16 @@ version = "0.1.0"
 description = "A DBWarden plugin."
 readme = "README.md"
 requires-python = ">=3.12.7"
-dependencies = ["dbwarden>=0.15.0"]
+dependencies = ["dbwarden>=0.16.0"]
 authors = [{ name = "Your Name", email = "you@example.com" }]
 
+[project.urls]
+Homepage = "https://github.com/you/dbwarden-example"
+Source = "https://github.com/you/dbwarden-example"
+
+# Discovery happens through this entry point. The key is the slug (the
+# distribution name without the `dbwarden-` prefix, hyphens to underscores);
+# the value is `<package>:setup`.
 [project.entry-points."dbwarden.plugins"]
 example = "dbwarden_example:setup"
 
@@ -19,3 +26,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+]

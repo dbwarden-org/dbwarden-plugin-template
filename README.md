@@ -1,282 +1,323 @@
 # dbwarden-plugin-template
 
-A GitHub template repository for building [DBWarden](https://github.com/dbwarden/dbwarden) plugins. Generating a repo from this template gives you a working, tested plugin with the standardized layout: a setuptools `src/` package, `setup(registrar)` in `__init__.py`, a `dbwarden.plugins` entry point, the Verified conformance suite, and a CI workflow.
+[![Python](https://img.shields.io/badge/Python-3.12.7%2B-3776AB?logo=python&logoColor=white&style=for-the-badge)](https://www.python.org/downloads/)
+[![CI](https://img.shields.io/github/actions/workflow/status/dbwarden-org/dbwarden-plugin-template/test.yml?logo=github&logoColor=white&style=for-the-badge)](https://github.com/dbwarden-org/dbwarden-plugin-template/actions/workflows/test.yml)
 
-This README explains the whole plugin system as well as how to use the template.
+A GitHub template repository for building [DBWarden](https://dbwarden.emiliano-go.com) plugins.
+
+Click **Use this template**, run one command, and you have a working, tested, publishable plugin with the layout every official DBWarden plugin uses: a `src/` package, `setup(registrar)` in `__init__.py`, a `dbwarden.plugins` entry point, the conformance suite, and CI that tests and publishes.
+
+Full documentation lives at **[dbwarden.emiliano-go.com/plugins](https://dbwarden.emiliano-go.com/plugins/)**. This README is the hands-on guide; the docs are the reference.
 
 ## Contents
 
 - [Quick start](#quick-start)
-- [What DBWarden plugins are](#what-dbwarden-plugins-are)
-- [Trust model](#trust-model)
-- [How plugins are discovered and loaded](#how-plugins-are-discovered-and-loaded)
-- [Naming rule and project structure](#naming-rule-and-project-structure)
+- [What you get](#what-you-get)
+- [Value plugins and object plugins](#value-plugins-and-object-plugins)
+- [Naming rule](#naming-rule)
 - [Writing a value plugin](#writing-a-value-plugin)
 - [Writing an object plugin](#writing-an-object-plugin)
-- [The Verified conformance suite](#the-verified-conformance-suite)
+- [Importing from DBWarden core](#importing-from-dbwarden-core)
+- [Testing your plugin](#testing-your-plugin)
+- [The conformance suite](#the-conformance-suite)
+- [Trust tiers](#trust-tiers)
 - [Publishing](#publishing)
-- [Installing and using a plugin](#installing-and-using-a-plugin)
+- [Checklist](#checklist)
 - [Reference](#reference)
 
 ## Quick start
 
-1. Click **Use this template** on GitHub to create your own repository.
-2. Rename the placeholders to your plugin name:
+1. Click **Use this template** on GitHub and create your repository.
+
+2. Clone it and rename the placeholders:
 
    ```bash
    python bootstrap.py dbwarden-yourname
    ```
 
-   `bootstrap.py` applies the naming rule below, renames the package, and removes itself. To rename by hand instead, replace `dbwarden-example`, `dbwarden_example`, and the entry key `example`, then rename `src/dbwarden_example/`.
+   This rewrites `pyproject.toml`, the workflows, the package, the tests, and this README, then deletes itself. To rename by hand instead, replace `dbwarden-example`, `dbwarden_example`, and the entry-point key `example`, then rename `src/dbwarden_example/`.
 
 3. Install and run the tests:
 
    ```bash
-   pip install -e . pytest
-   pytest -q
+   uv sync --dev
+   uv run pytest -q
    ```
 
-The template ships as a value plugin. To build an object plugin, see [Writing an object plugin](#writing-an-object-plugin).
+   Or with pip: `pip install -e . pytest && pytest -q`.
 
-## What DBWarden plugins are
+4. Set the author and URLs in `pyproject.toml`, then start replacing the example hook with your own.
 
-A plugin is a normal Python package that extends DBWarden without touching its core. DBWarden keeps a clean core and pushes framework integrations and backend-specific schema support into plugins. There are two kinds.
+You now have a green test suite. Keep it green as you work; the conformance tests catch the mistakes that make a plugin fail on a user's machine rather than in your editor.
 
-**Value plugins** supply a value at a named hook point. Core calls the hook where optional behavior is needed. Examples: FastAPI session dependencies, a lifespan, health routes, seed commands, module loaders. A value plugin registers callables by name.
+## What you get
 
-**Object plugins** add a database object type to DBWarden's schema diff pipeline. Examples: PostgreSQL extensions, roles, grants, policies, custom types, ClickHouse RBAC. An object plugin registers a handler that participates in extract, canonicalize, diff, and emit.
-
-A single package may register both.
-
-## Trust model
-
-DBWarden classifies every plugin by its distribution name **before importing any of its code**. This is the classify-before-load guarantee: merely installing a plugin runs none of its logic.
-
-| Tier | Loads automatically? | Basis of trust |
-|------|----------------------|----------------|
-| Official | Yes | DBWarden-owned package, provenance verified at install (PyPI PEP 740 attestation). |
-| Approved (Verified badge) | Yes, when the installed version meets the approved minimum | Passed the conformance suite and a review. |
-| Community | No, consent required | Your explicit, version-specific consent. |
-
-A plugin's tier comes from the curated lists in core (`dbwarden/_official.py`, `dbwarden/_approved.py`), not from its name. Every plugin, community or official, is distributed as `dbwarden-<name>`.
-
-Community plugins are installed but not loaded until you consent to the exact installed version:
-
-```bash
-dbwarden plugin trust dbwarden-yourname
+```
+.github/workflows/test.yml       CI: pytest on 3.12 and 3.13
+.github/workflows/publish.yml    Release to PyPI via Trusted Publishing
+pyproject.toml                   Package metadata and the entry point
+src/dbwarden_example/__init__.py setup(registrar) and the example hook
+tests/conftest.py                Registers the plugin for its own tests
+tests/test_conformance.py        The shared conformance suite
+tests/test_example.py            Behavior tests, to replace with your own
+bootstrap.py                     One-shot renamer, deletes itself
 ```
 
-Consent is recorded in `.dbwarden/consent.toml` and is version-specific. Trust gates whether a plugin loads, not what it can do once loaded: a loaded plugin runs with full process privileges. It is not a sandbox.
+Every official DBWarden plugin uses exactly this layout. Matching it means a reviewer knows where to look, and it is what the approval process expects.
 
-## How plugins are discovered and loaded
+## Value plugins and object plugins
 
-Discovery uses standard Python entry points. Your `pyproject.toml` declares one entry point in the `dbwarden.plugins` group pointing at a `setup` callable:
+A plugin is a normal Python package that extends DBWarden without patching it. There are two kinds, and one package may be both.
+
+**Value plugins** supply a value at a named hook. Core calls the hook wherever optional behavior belongs: a session dependency, a lifespan, health routes, seed commands, a module loader. You register callables by name.
+
+**Object plugins** teach DBWarden's schema diff about a new database object type: PostgreSQL extensions, roles, grants, policies, custom types, ClickHouse RBAC. You register a handler that participates in extract, canonicalize, diff, and emit.
+
+The template ships as a value plugin because it is the shorter of the two. Switching to an object plugin is described below.
+
+## Naming rule
+
+DBWarden derives everything from the distribution name, so pick it first.
+
+| | Rule | Example |
+|---|---|---|
+| Distribution | `dbwarden-<name>` | `dbwarden-audit-log` |
+| Slug | distribution minus `dbwarden-`, hyphens to underscores | `audit_log` |
+| Import package | `dbwarden_` + slug | `dbwarden_audit_log` |
+| Entry-point key | the slug | `audit_log` |
 
 ```toml
 [project.entry-points."dbwarden.plugins"]
-yourname = "dbwarden_yourname:setup"
+audit_log = "dbwarden_audit_log:setup"
 ```
 
-The lifecycle:
-
-1. DBWarden reads entry-point metadata (name, version) without importing your code.
-2. It classifies the distribution into a trust tier.
-3. If trust rules allow, it imports the entry point and calls `setup(registrar)`.
-4. `setup(registrar)` registers value hooks and/or object handlers.
-
-Two rules make this safe and fast, and the conformance suite enforces them:
-
-- **No import-time side effects.** Registration happens only inside `setup()`. Importing your package registers nothing.
-- **Defer heavy imports to call time.** Value hooks import their DBWarden internals (and optional dependencies like FastAPI or drivers) inside the function body. Object plugins import their `handler` module inside `setup()`.
-
-## Naming rule and project structure
-
-All three names derive from the distribution name by one rule:
-
-```
-slug        = distribution_name.removeprefix("dbwarden-").replace("-", "_")
-import pkg  = "dbwarden_" + slug
-entry key   = slug
-```
-
-For example `dbwarden-audit` gives package `dbwarden_audit` and key `audit`; `dbwarden-pgsql-rbac` gives package `dbwarden_pgsql_rbac` and key `pgsql_rbac`.
-
-Structure:
-
-```
-<distribution>/
-├── pyproject.toml            # setuptools, src layout, dbwarden>=0.15.0
-├── README.md
-├── LICENSE
-├── .gitignore
-├── .github/workflows/test.yml
-├── src/<package>/
-│   ├── __init__.py           # hook functions + setup(registrar)
-│   └── handler.py            # object plugins only
-└── tests/
-    └── test_conformance.py   # Verified conformance suite
-```
-
-`setup(registrar)` lives at the bottom of `__init__.py`. There is no separate `plugin.py`.
+`bootstrap.py` applies all of this for you.
 
 ## Writing a value plugin
 
-Define each hook as a top-level function and register it in `setup()`. Import what the hook needs inside its body so importing the package stays side-effect-free:
+A value hook is a plain function registered under a name core knows. Core calls it with a documented signature.
 
 ```python
-# src/dbwarden_yourname/__init__.py
-def session_factory(database: str | None = None, *, dev: bool = False):
-    from dbwarden.extensions.fastapi.engines import _async_session_factory  # deferred
-
-    async def _dependency():
-        async with _async_session_factory(database, dev=dev)() as session:
-            yield session
-
-    return _dependency
+def load_model_module(path, base_dir):
+    ...
 
 
 def setup(registrar) -> None:
-    registrar.register("session_factory", session_factory)
-
-
-__all__ = ["session_factory", "setup"]
+    registrar.register("load_model_module", load_model_module)
 ```
 
-`registrar.register(name, callable)` raises `ValueError` if `name` is not a known hook, so typos fail fast at load time. Each hook has a documented signature that core calls it with; matching it is part of the conformance suite.
+The hooks core currently calls:
 
-Some hooks are single (exactly one plugin may provide them; a second provider raises a conflict when the hook runs) and some are multi (`health_routes`, `migration_routes`; core collects every provider). The full list of hook names, signatures, and single or multi status is in the [hook catalog](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/reference/hook-catalog.md).
+| Hook | Called for |
+|---|---|
+| `session_factory`, `sync_session_factory` | Request-scoped database sessions |
+| `clickhouse_session_factory`, `clickhouse_sync_session_factory` | ClickHouse clients |
+| `load_model_module`, `load_config_module` | Turning a file path into a module |
+| `lifespan` | Application startup and shutdown |
+| `health_routes`, `migration_routes` | HTTP routers |
+| `seed_create`, `seed_apply`, `seed_list`, `seed_rollback`, `seed_export` | The `dbwarden seed` commands |
+
+Signatures for each are in the [hook catalog](https://dbwarden.emiliano-go.com/plugins/reference/hook-catalog/). Match them exactly: `test_hook_signature_compliance` checks your function against the arguments core actually passes, so a mismatch fails in CI instead of mid-migration.
+
+Most hooks accept exactly one provider. Two plugins registering the same single-value hook raises `HookConflictError` at call time. `health_routes` and `migration_routes` are the exceptions and accept several.
+
+See [value plugins](https://dbwarden.emiliano-go.com/plugins/developing/value-plugins/) for the full guide.
 
 ## Writing an object plugin
 
-An object plugin adds a database object type to the schema diff pipeline. Put the handler in `handler.py` and import it lazily in `setup()`:
+An object plugin adds a type to the schema diff. Create `src/<package>/handler.py`:
 
 ```python
-# src/dbwarden_yourname/handler.py
-from dbwarden.engine.core import Anchor, MigrationStatement, Op, OrderingConstraint, RunPhase
+from dbwarden.engine.core import (
+    Anchor,
+    MigrationStatement,
+    Op,
+    OrderingConstraint,
+    RunPhase,
+)
 
 
-class YourHandler:
-    object_type = "your_object"
-    op_types = ("create_your_object", "drop_your_object")
-    run_phase = RunPhase.DIFF
-    ordering = OrderingConstraint(after=(Anchor.AFTER_TABLES,))
+class WidgetHandler:
+    object_type = "widget"
+    op_types = ("create_widget", "drop_widget")
+    run_phase = RunPhase.PREAMBLE
+    ordering = OrderingConstraint(
+        after=(Anchor.PREAMBLE,),
+        before=(Anchor.BEFORE_TABLES,),
+    )
 
-    def extract(self, snapshot): ...              # live database state
-    def model_spec_from_config(self, config): ... # desired state from config
-    def model_spec_from_tables(self, model_tables): ...  # desired state from models
-    def canonicalize(self, spec): ...             # normalize for comparison
-    def diff(self, snap_spec, model_spec): ...    # -> (upgrade_ops, rollback_ops)
-    def emit(self, op, db_name=None, **kwargs): ...  # Op -> list[MigrationStatement]
+    def extract(self, snapshot): ...               # live database to spec
+    def model_spec_from_config(self, config): ...  # config to spec
+    def model_spec_from_tables(self, tables): ...  # models to spec
+    def canonicalize(self, spec): ...              # normalize for comparison
+    def diff(self, snap_spec, model_spec): ...     # to (upgrade_ops, rollback_ops)
+    def emit(self, op, db_name=None, **kw): ...    # Op to [MigrationStatement]
 ```
 
+Then in `__init__.py`:
+
 ```python
-# src/dbwarden_yourname/__init__.py
+from dbwarden_example.handler import WidgetHandler
+
+HANDLER_CLASSES = (WidgetHandler,)
+
+
 def setup(registrar) -> None:
-    from dbwarden_yourname.handler import YourHandler
-
-    registrar.register_object_handler(YourHandler())
+    for handler_class in HANDLER_CLASSES:
+        registrar.register_object_handler(handler_class())
 ```
 
-Ordering uses public anchors, never private statement-order integers. The anchors, in order, are `PREAMBLE`, `BEFORE_TABLES`, `AFTER_TABLES`, `AFTER_CONSTRAINTS`, `AFTER_INDEXES`, `POSTAMBLE`. You can also order a handler relative to another by object type with `after_object` and `before_object`. DBWarden rejects impossible anchor pairs, unknown references, and cycles.
+The `HANDLER_CLASSES` tuple is a convention worth keeping: the conformance suite parametrizes over it, so every handler you add is covered automatically.
 
-The [`dbwarden-pgsql-extensions`](https://github.com/dbwarden/dbwarden-pgsql-extensions) plugin is a complete worked example, and the [object-plugin docs](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/developing/object-plugins.md) walk through it step by step.
+Two rules that catch people out:
 
-## The Verified conformance suite
+- **Order with anchors, never integers.** `PREAMBLE`, `BEFORE_TABLES`, `AFTER_TABLES`, `AFTER_CONSTRAINTS`, `AFTER_INDEXES`, `POSTAMBLE`. DBWarden derives the private `statement_order` from them at registration. That derivation is also why `emit()` only works on a registered handler, which is why the template's tests register before asserting.
+- **Emit SQL the way core does.** `dbwarden.engine.core.plugin_api` exposes the shared helpers: `quote_pg`, `qualified_name`, the grant and policy builders, `emit_with_cluster` for ClickHouse `ON CLUSTER`, and secret redaction. Use them rather than reimplementing, so your SQL cannot drift from the SQL core generates for neighbouring objects.
 
-`tests/test_conformance.py` runs DBWarden's shared harness (`dbwarden.plugin_conformance`), which proves your plugin respects the contract. Keeping it green in public CI is what qualifies a community plugin for the **Verified** (Approved tier) badge.
+`object_type` is the registration key. Two different plugins claiming the same one raises `ObjectHandlerConflictError`; a plugin claiming the same type as a core handler overrides core, which is how official plugins replace built-in fallbacks. Overriding is announced, once per plugin and type per run:
 
-The checks:
+```
+WARNING  dbwarden.registry - Plugin 'dbwarden-yourname' overrides the built-in
+handler for object type 'role'. Migration SQL for 'role' now comes from the
+plugin, not DBWarden core.
+```
 
-1. `test_entry_point_is_declared`: the `dbwarden.plugins` entry point exists and resolves to a callable.
-2. `test_import_has_no_side_effects`: importing the package registers nothing.
-3. `test_setup_registers_hooks`: `setup()` registers the hooks or handlers it claims.
-4. `test_hook_signature_compliance`: each registered hook accepts the arguments core calls it with.
-5. `test_no_core_internals_imported`: only the public API is imported (`dbwarden.plugin`, `dbwarden.exceptions`, `dbwarden.engine.core`).
-6. `test_object_handler_conformance` (object plugins): extract, canonicalize, diff, and emit return the right types and valid SQL.
-7. `test_ordering_constraint_satisfiable` (object plugins): the ordering constraint is not statically impossible.
-8. `test_idempotent_setup` (recommended): calling `setup()` twice does not raise or add duplicate registrations.
+If you override, expect to justify it when you apply for the Approved tier: you are taking over DDL generation for that object type.
 
-The template wires these up for a value plugin. For an object plugin, add the two object checks:
+See [object plugins](https://dbwarden.emiliano-go.com/plugins/developing/object-plugins/) and [ordering anchors](https://dbwarden.emiliano-go.com/plugins/reference/ordering-anchors/).
+
+## Importing from DBWarden core
+
+**You may import anything from `dbwarden`.** There is no allowlist. If you want `dbwarden.output` so your command output matches the rest of the CLI, or `dbwarden.repositories.*` to read a tracking table, import them.
+
+Three surfaces are stable and change only on a major version:
+
+- `dbwarden.plugin` (`PluginRegistrar`, the registries, the hook errors)
+- `dbwarden.exceptions`
+- `dbwarden.engine.core`, including `dbwarden.engine.core.plugin_api`
+
+Prefer those where they cover your need, because they are what you will not have to revisit on a core upgrade. Anything deeper is supported but moves faster: pin your `dbwarden` dependency to the range you test against, and run CI against those versions. `plugin_conformance.core_imports_outside_stable_api(pkg)` lists your deeper imports so an upgrade has a checklist. It reports; it does not fail.
+
+`test_core_imports_resolve` does fail, and it is the one that matters: it checks that every `dbwarden` module you import exists in the installed core. That turns "ImportError on a user's machine" into "red CI run".
+
+One rule is absolute: **import lazily inside functions where you can**. Merely importing your package must not pull in heavy dependencies or, worse, register anything.
+
+### Declaring the contract version
+
+The plugin contract is versioned separately from DBWarden's release version. Your package declares which one it targets:
 
 ```python
-def test_object_handler_conformance():
-    from dbwarden_yourname.handler import YourHandler
-    conformance.assert_object_handler_conformance(YourHandler(), config=SomeConfig())
-
-def test_ordering_constraint_satisfiable():
-    from dbwarden_yourname.handler import YourHandler
-    conformance.assert_ordering_constraint_satisfiable(YourHandler())
+DBWARDEN_PLUGIN_API = 1
 ```
 
-Full details are in the [Approved Plugin Standard](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/developing/approved-standard.md).
+Core refuses to load a plugin declaring a version it does not provide, listing it as `incompatible` with both versions named. That is the difference between "upgrade dbwarden-yourname" and an `AttributeError` halfway through generating someone's migration. Bump it only when you rebuild against a new contract version; adding hooks or helpers does not change it.
+
+## Testing your plugin
+
+`tests/conftest.py` registers your plugin before each test:
+
+```python
+@pytest.fixture(autouse=True)
+def register_plugin():
+    HookRegistry.clear()
+    ObjectPluginRegistry.clear()
+    dbwarden_example.setup(PluginRegistrar(PLUGIN_NAME))
+    yield
+    HookRegistry.clear()
+    ObjectPluginRegistry.clear()
+```
+
+This matters more than it looks. Core reaches your code only through the registries, so anything exercising a real code path (a schema diff, a CLI command, a FastAPI dependency) sees nothing until `setup()` has run. The registries are process-global class state, so the fixture clears them on both sides: ordering stops mattering, and a second registration cannot trip a conflict error.
+
+Write your behavior tests against the real thing where you can. For an object plugin that means running a snapshot through the diff pipeline and asserting on the SQL, not just calling `emit()` directly. `tests/test_example.py` shows both styles: one test through `HookRegistry`, one calling the function directly.
+
+To develop against a local DBWarden checkout rather than the released one:
+
+```bash
+uv pip install -e ../dbwarden -e .
+```
+
+## The conformance suite
+
+`tests/test_conformance.py` runs DBWarden's shared harness, `dbwarden.plugin_conformance`. Green means your plugin is a well-behaved citizen and is a prerequisite for the Verified badge.
+
+| Test | Catches |
+|---|---|
+| `test_entry_point_is_declared` | Packaging that leaves the plugin undiscoverable |
+| `test_import_has_no_side_effects` | Registering at import time, which bypasses the consent gate |
+| `test_setup_registers_hooks` | A `setup()` that installs but silently does nothing |
+| `test_hook_signature_compliance` | A `TypeError` when core calls your hook |
+| `test_core_imports_resolve` | Importing a core module the installed DBWarden lacks |
+| `test_api_version_is_declared` | Not declaring which plugin contract you target |
+| `test_idempotent_setup` | Breaking when `setup()` runs twice |
+| `test_object_handler_conformance` | Handlers that return wrong types and crash the diff |
+| `test_ordering_constraint_satisfiable` | Ordering that can never be satisfied |
+
+The last two are object-plugin only; the commented block at the bottom of the file has them ready to uncomment.
+
+The suite checks contract adherence, not correctness or security. It does not read your SQL and it grants no sandboxing: a loaded plugin runs with full process privileges. Your own tests remain your responsibility.
+
+See the [Approved standard](https://dbwarden.emiliano-go.com/plugins/developing/approved-standard/).
+
+## Trust tiers
+
+DBWarden classifies every plugin by distribution name **before importing any of its code**. Installing a plugin runs none of its logic.
+
+| Tier | Loads automatically | Basis |
+|---|---|---|
+| Official | Yes | DBWarden-owned, PyPI attestation verified at install |
+| Approved (Verified) | Yes, at or above the approved minimum version | Passed conformance and review |
+| Community | No, consent required | Your explicit, version-specific consent |
+
+Your plugin starts as community. Users install it and run `dbwarden plugin trust dbwarden-yourname` to enable it; consent is recorded per version in `.dbwarden/consent.toml`, so a new version needs fresh consent. This is why `test_import_has_no_side_effects` exists: registering at import time would run your code before the user agreed to it.
+
+To apply for Approved, open a Plugin Approval issue on the DBWarden repository. Alongside the repo link and a green CI run, it asks for two declarations a test cannot make for you:
+
+- **Core imports outside the stable API**, from `core_imports_outside_stable_api("your_package")`, with a reason for each. A reason that generalises is an argument for making the helper public in `plugin_api`, so this tends to work in your favour rather than against you.
+- **Object type overrides**, if any handler claims a type core already owns.
+
+See [consent and trust](https://dbwarden.emiliano-go.com/plugins/using-plugins/consent-and-trust/).
 
 ## Publishing
 
-The template's `pyproject.toml` already has the right shape:
+`publish.yml` releases through PyPI Trusted Publishing, so no API token is stored anywhere. Before your first release:
 
-```toml
-[build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+1. Create the project on PyPI, or reserve the name.
+2. Add a Trusted Publisher: your `owner/repo`, workflow `publish.yml`, environment `pypi`.
+3. Create a `pypi` environment in your repository settings.
+4. Publish a GitHub Release. The workflow builds and uploads.
 
-[project]
-name = "dbwarden-yourname"
-version = "0.1.0"
-requires-python = ">=3.12.7"
-dependencies = ["dbwarden>=0.15.0"]
+Keep the workflow file named `publish.yml`. PyPI records the workflow filename in the attestation, and renaming it breaks the match that verification relies on.
 
-[project.entry-points."dbwarden.plugins"]
-yourname = "dbwarden_yourname:setup"
+See [publishing](https://dbwarden.emiliano-go.com/plugins/developing/publishing/).
 
-[tool.setuptools.packages.find]
-where = ["src"]
-```
+## Checklist
 
-Depend on DBWarden with a lower bound. The plugin API is stable within the `0.x` series; you can also cap the upper bound (`dbwarden>=0.15.0,<1.0`) if you want a core update to never surprise you.
+Before you tag a release:
 
-The included `.github/workflows/test.yml` runs the conformance suite on every push. Link a green run when you request the Verified badge.
-
-Consider PyPI Trusted Publishing (publishing from GitHub Actions with OIDC), which attaches a PEP 740 attestation to your release. DBWarden verifies that attestation for official plugins during `dbwarden plugin add`. Trusted Publishing alone does not make a plugin official; the Official tier is the curated list in core.
-
-## Installing and using a plugin
-
-For someone consuming your plugin:
-
-```bash
-dbwarden plugin add dbwarden-yourname
-```
-
-For official plugins this verifies provenance before installing. For community plugins it installs the package, then you consent once:
-
-```bash
-dbwarden plugin trust dbwarden-yourname
-```
-
-You can also install with your package manager directly:
-
-```bash
-uv add dbwarden-yourname
-# or
-pip install dbwarden-yourname
-```
-
-Inspect what DBWarden discovered:
-
-```bash
-dbwarden plugin list
-dbwarden plugin info dbwarden-yourname
-```
-
-There is no wiring step. Once installed and trusted, the plugin is discovered and its `setup()` registers its hooks. Core resolves them where it needs them and falls back to built-in behavior when a hook is absent.
+- [ ] `bootstrap.py` has been run and is gone
+- [ ] Author, description, and URLs set in `pyproject.toml`
+- [ ] `dbwarden` dependency pinned to the range you actually test
+- [ ] `VALUE_HOOKS` or `OBJECT_TYPES` in `test_conformance.py` matches `setup()`
+- [ ] `tests/test_example.py` replaced with tests for your behavior
+- [ ] `uv run pytest -q` green locally and in CI
+- [ ] README rewritten to describe what your plugin does
+- [ ] Trusted Publishing configured on PyPI
+- [ ] Any core-handler overrides are intentional and documented
 
 ## Reference
 
-- [Plugin docs index](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/index.md)
-- [Hook catalog](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/reference/hook-catalog.md)
-- [Ordering anchors](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/reference/ordering-anchors.md)
-- [Object plugins](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/developing/object-plugins.md)
-- [Approved plugin standard](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/developing/approved-standard.md)
-- [Plugin CLI reference](https://github.com/dbwarden/dbwarden/blob/main/docs/plugins/reference/plugin-cli.md)
+- [Plugin documentation](https://dbwarden.emiliano-go.com/plugins/)
+- [Quickstart](https://dbwarden.emiliano-go.com/plugins/quickstart/)
+- [Developing: overview](https://dbwarden.emiliano-go.com/plugins/developing/overview/)
+- [Value plugins](https://dbwarden.emiliano-go.com/plugins/developing/value-plugins/)
+- [Object plugins](https://dbwarden.emiliano-go.com/plugins/developing/object-plugins/)
+- [Approved standard](https://dbwarden.emiliano-go.com/plugins/developing/approved-standard/)
+- [Publishing](https://dbwarden.emiliano-go.com/plugins/developing/publishing/)
+- [Hook catalog](https://dbwarden.emiliano-go.com/plugins/reference/hook-catalog/)
+- [Ordering anchors](https://dbwarden.emiliano-go.com/plugins/reference/ordering-anchors/)
+- [Plugin CLI](https://dbwarden.emiliano-go.com/plugins/reference/plugin-cli/)
+- [FAQ](https://dbwarden.emiliano-go.com/plugins/faq/)
 
 ## License
 

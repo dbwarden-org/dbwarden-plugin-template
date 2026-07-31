@@ -1,12 +1,36 @@
 name: tests
+
 on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12.7", "3.13"]
+
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: "3.12"
-      - run: pip install -e . pytest
-      - run: pytest -q
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run tests
+        run: uv run pytest --cov --cov-branch --cov-report=xml
+
+      # Optional. Without a CODECOV_TOKEN secret this step is skipped rather
+      # than failing the run, so it is safe to leave in place.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
