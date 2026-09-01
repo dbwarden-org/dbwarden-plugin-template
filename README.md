@@ -41,10 +41,12 @@ Full documentation lives at **[dbwarden.emiliano-go.com/plugins](https://dbwarde
 
    ```bash
    uv sync --dev
+   uv run ruff check .       # lint
+   uv run ruff format --check .  # format check
    uv run pytest -q
    ```
 
-   Or with pip: `pip install -e . pytest && pytest -q`.
+   Or with pip: `pip install -e . pytest ruff && pytest -q`.
 
 4. Set the author and URLs in `pyproject.toml`, then start replacing the example hook with your own.
 
@@ -53,10 +55,11 @@ You now have a green test suite. Keep it green as you work; the conformance test
 ## What you get
 
 ```
-.github/workflows/test.yml       CI: pytest on 3.12 and 3.13
-.github/workflows/publish.yml    Release to PyPI via Trusted Publishing
-pyproject.toml                   Package metadata and the entry point
-src/dbwarden_example/__init__.py setup(registrar) and the example hook
+.github/workflows/test.yml       CI: lint (ruff) + pytest on 3.12 and 3.13
+.github/workflows/publishing.yml Release to PyPI via Trusted Publishing
+pyproject.toml                   Package metadata, entry point, and ruff config
+src/dbwarden_example/__init__.py setup(registrar), value hooks, and object handlers
+src/dbwarden_example/handler.py  Example object handler (WidgetHandler)
 tests/conftest.py                Registers the plugin for its own tests
 tests/test_conformance.py        The shared conformance suite
 tests/test_example.py            Behavior tests, to replace with your own
@@ -280,14 +283,12 @@ See [consent and trust](https://dbwarden.emiliano-go.com/plugins/using-plugins/c
 
 ## Publishing
 
-`publish.yml` releases through PyPI Trusted Publishing, so no API token is stored anywhere. Before your first release:
+`publishing.yml` releases through PyPI Trusted Publishing, so no API token is stored anywhere. Before your first release:
 
 1. Create the project on PyPI, or reserve the name.
-2. Add a Trusted Publisher: your `owner/repo`, workflow `publish.yml`, environment `pypi`.
+2. Add a Trusted Publisher: your `owner/repo`, workflow `publishing.yml`, environment `pypi`.
 3. Create a `pypi` environment in your repository settings.
 4. Publish a GitHub Release. The workflow builds and uploads.
-
-Keep the workflow file named `publish.yml`. PyPI records the workflow filename in the attestation, and renaming it breaks the match that verification relies on.
 
 See [publishing](https://dbwarden.emiliano-go.com/plugins/developing/publishing/).
 

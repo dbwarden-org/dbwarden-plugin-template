@@ -6,11 +6,9 @@ name: Publish to PyPI
 #
 # Before your first release:
 #   1. Create the project on PyPI (or reserve the name).
-#   2. Add a Trusted Publisher for it: owner/repo, workflow `publish.yml`,
+#   2. Add a Trusted Publisher for it: owner/repo, workflow `publishing.yml`,
 #      environment `pypi`.
 #   3. Create a `pypi` environment in this repository's settings.
-#
-# Renaming this file breaks the attestation match. Keep it `publish.yml`.
 
 on:
   release:

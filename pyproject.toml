@@ -31,4 +31,12 @@ testpaths = ["tests"]
 dev = [
     "pytest",
     "pytest-cov",
+    "ruff>=0.6",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

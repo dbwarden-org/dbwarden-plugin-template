@@ -33,6 +33,19 @@ def load_model_module(path: Path, base_dir: Path) -> Any:
     return module
 
 
+# Object plugin: handler classes live in handler.py (or a handlers/ package)
+# and are registered here. The HANDLER_CLASSES tuple is a convention worth
+# keeping: the conformance suite parametrizes over it, so every handler you
+# add is covered automatically.
+#
+# For a value-only plugin, remove the HANDLER_CLASSES import and the
+# object_types tuple below, and keep only the value hook registrations.
+from dbwarden_example.handler import WidgetHandler
+
+HANDLER_CLASSES = (WidgetHandler,)
+OBJECT_TYPES = tuple(h.object_type for h in HANDLER_CLASSES)
+
+
 def setup(registrar) -> None:
     """Register everything this plugin provides.
 
@@ -40,25 +53,16 @@ def setup(registrar) -> None:
     community plugins) after you have consented. Nothing here runs at import
     time.
 
-    Replace `load_model_module` with the hooks you actually provide. The full
-    list is in the hook catalog:
+    Replace the hooks and handlers below with what your plugin actually
+    provides. The full hook list is in the hook catalog:
     https://dbwarden.emiliano-go.com/plugins/reference/hook-catalog/
     """
+    # Value hooks
     registrar.register("load_model_module", load_model_module)
 
+    # Object handlers
+    for handler_class in HANDLER_CLASSES:
+        registrar.register_object_handler(handler_class())
 
-# An object plugin looks like this instead. Keep handler classes in a
-# `handler.py` (or a `handlers/` package) and import them here, so `setup()`
-# stays a single readable list of what the plugin contributes:
-#
-#     from dbwarden_example.handler import ExampleHandler
-#
-#     HANDLER_CLASSES = (ExampleHandler,)
-#
-#     def setup(registrar) -> None:
-#         for handler_class in HANDLER_CLASSES:
-#             registrar.register_object_handler(handler_class())
-#
-# See https://dbwarden.emiliano-go.com/plugins/developing/object-plugins/
 
-__all__ = ["load_model_module", "setup"]
+__all__ = ["HANDLER_CLASSES", "OBJECT_TYPES", "load_model_module", "setup"]

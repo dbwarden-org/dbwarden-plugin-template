@@ -8,6 +8,8 @@ Reference: https://dbwarden.emiliano-go.com/plugins/developing/approved-standard
 """
 from __future__ import annotations
 
+import pytest
+
 from dbwarden import plugin_conformance as conformance
 
 import dbwarden_example
@@ -17,6 +19,9 @@ PACKAGE = "dbwarden_example"
 
 # Hooks this plugin promises to register. Keep in sync with setup().
 VALUE_HOOKS = ("load_model_module",)
+
+# Object types this plugin promises to register. Keep in sync with setup().
+OBJECT_TYPES = dbwarden_example.OBJECT_TYPES
 
 
 def test_entry_point_is_declared() -> None:
@@ -32,6 +37,7 @@ def test_setup_registers_hooks() -> None:
         dbwarden_example.setup,
         plugin=DISTRIBUTION,
         value_hooks=VALUE_HOOKS,
+        object_types=OBJECT_TYPES,
     )
 
 
@@ -51,23 +57,11 @@ def test_idempotent_setup() -> None:
     conformance.assert_idempotent_setup(dbwarden_example.setup, plugin=DISTRIBUTION)
 
 
-# For an object plugin, replace test_setup_registers_hooks with:
-#
-# OBJECT_TYPES = tuple(h.object_type for h in dbwarden_example.HANDLER_CLASSES)
-#
-# def test_setup_registers_object_handlers() -> None:
-#     conformance.assert_setup_registers(
-#         dbwarden_example.setup,
-#         plugin=DISTRIBUTION,
-#         object_types=OBJECT_TYPES,
-#     )
-#
-# and add these two, which apply only to object plugins:
-#
-# @pytest.mark.parametrize("handler_class", dbwarden_example.HANDLER_CLASSES)
-# def test_object_handler_conformance(handler_class) -> None:
-#     conformance.assert_object_handler_conformance(handler_class())
-#
-# @pytest.mark.parametrize("handler_class", dbwarden_example.HANDLER_CLASSES)
-# def test_ordering_constraint_satisfiable(handler_class) -> None:
-#     conformance.assert_ordering_constraint_satisfiable(handler_class())
+@pytest.mark.parametrize("handler_class", dbwarden_example.HANDLER_CLASSES)
+def test_object_handler_conformance(handler_class) -> None:
+    conformance.assert_object_handler_conformance(handler_class())
+
+
+@pytest.mark.parametrize("handler_class", dbwarden_example.HANDLER_CLASSES)
+def test_ordering_constraint_satisfiable(handler_class) -> None:
+    conformance.assert_ordering_constraint_satisfiable(handler_class())
