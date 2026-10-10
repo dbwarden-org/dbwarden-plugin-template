@@ -12,6 +12,7 @@ Applies the standard naming rule:
 It rewrites pyproject.toml, the workflows, the package, the tests, and the
 README, then removes itself.
 """
+
 from __future__ import annotations
 
 import sys

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from dbwarden.plugin import HookRegistry, ObjectPluginRegistry, PluginRegistrar
 
 import dbwarden_example

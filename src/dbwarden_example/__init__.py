@@ -5,6 +5,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from dbwarden_example.handler import WidgetHandler
+
 __version__ = "0.1.0"
 
 # The DBWarden plugin contract this package targets. Core refuses to load a
@@ -40,8 +42,6 @@ def load_model_module(path: Path, base_dir: Path) -> Any:
 #
 # For a value-only plugin, remove the HANDLER_CLASSES import and the
 # object_types tuple below, and keep only the value hook registrations.
-from dbwarden_example.handler import WidgetHandler
-
 HANDLER_CLASSES = (WidgetHandler,)
 OBJECT_TYPES = tuple(h.object_type for h in HANDLER_CLASSES)
 

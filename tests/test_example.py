@@ -4,12 +4,12 @@ The conformance suite proves the plugin is a well-behaved citizen. It says
 nothing about whether your hook is correct, which is what this file is for.
 Replace these with tests for your own behavior.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
-
 from dbwarden.plugin import HookRegistry
 
 import dbwarden_example

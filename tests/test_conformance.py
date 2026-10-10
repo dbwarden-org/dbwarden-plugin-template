@@ -6,10 +6,10 @@ Verified badge.
 
 Reference: https://dbwarden.emiliano-go.com/plugins/developing/approved-standard/
 """
+
 from __future__ import annotations
 
 import pytest
-
 from dbwarden import plugin_conformance as conformance
 
 import dbwarden_example

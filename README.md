@@ -101,8 +101,7 @@ audit_log = "dbwarden_audit_log:setup"
 A value hook is a plain function registered under a name core knows. Core calls it with a documented signature.
 
 ```python
-def load_model_module(path, base_dir):
-    ...
+def load_model_module(path, base_dir): ...
 
 
 def setup(registrar) -> None:
@@ -149,12 +148,12 @@ class WidgetHandler:
         before=(Anchor.BEFORE_TABLES,),
     )
 
-    def extract(self, snapshot): ...               # live database to spec
+    def extract(self, snapshot): ...  # live database to spec
     def model_spec_from_config(self, config): ...  # config to spec
     def model_spec_from_tables(self, tables): ...  # models to spec
-    def canonicalize(self, spec): ...              # normalize for comparison
-    def diff(self, snap_spec, model_spec): ...     # to (upgrade_ops, rollback_ops)
-    def emit(self, op, db_name=None, **kw): ...    # Op to [MigrationStatement]
+    def canonicalize(self, spec): ...  # normalize for comparison
+    def diff(self, snap_spec, model_spec): ...  # to (upgrade_ops, rollback_ops)
+    def emit(self, op, db_name=None, **kw): ...  # Op to [MigrationStatement]
 ```
 
 Then in `__init__.py`:

@@ -6,12 +6,13 @@ SQL for every registered object type.
 
 See https://dbwarden.emiliano-go.com/plugins/developing/object-plugins/
 """
+
 from __future__ import annotations
 
 from typing import Any
 
 from dbwarden.engine.core.ordering import Anchor, OrderingConstraint
-from dbwarden.engine.core.protocol import ObjectHandler, Op, RunPhase
+from dbwarden.engine.core.protocol import Op, RunPhase
 from dbwarden.engine.core.statement_order import MigrationStatement, StatementOrder
 
 
